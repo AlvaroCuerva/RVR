@@ -23,8 +23,7 @@ int main(int argc, char **argv)
     // Gestion de errores
     if (argc != 3)
     {
-        printf("Numero de argumentos no valido\n");
-        printf("Formato debe ser \"./program host port\"\n");
+        printf("Formato incorrecto: \n ./redes_P2-4-TCP-Server host port\n");
         return -1;
     }
     struct addrinfo hints;
