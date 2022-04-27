@@ -1,12 +1,34 @@
 #include <string.h>
-
 #include "Serializable.h"
 #include "Socket.h"
 
 Socket::Socket(const char * address, const char * port):sd(-1)
 {
+
+    struct addrinfo* info;
+    struct addrinfo hints;
+
+
     //Construir un socket de tipo AF_INET y SOCK_DGRAM usando getaddrinfo.
+
+    //Iniciar socket UDP
+    memset(&hints, 0, sizeof(struct addrinfo));
+
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+
+    int rc = getaddrinfo(address, port, &hints, &info);
+    if(rc != 0){
+         printf("getaddrinfo: %s\n", gai_strerror(rc));
+    }
     //Con el resultado inicializar los miembros sd, sa y sa_len de la clase
+    sd = socket(info->ai_family, info->ai_socktype, 0);
+    
+
+    sa = *info->ai_addr;
+    sa_len = info->ai_addrlen;
+
+    freeaddrinfo(info);
 }
 
 int Socket::recv(Serializable &obj, Socket * &sock)
@@ -35,8 +57,16 @@ int Socket::recv(Serializable &obj, Socket * &sock)
 
 int Socket::send(Serializable& obj, const Socket& sock)
 {
+    //obj es el objeto de tipo chat que hereda de Serializable
     //Serializar el objeto
+    obj.to_bin();
     //Enviar el objeto binario a sock usando el socket sd
+    int sizeSent = ::sendto(sd, obj.data(), obj.size(), 0, &sock.sa, sock.sa_len);
+    if(sizeSent < 0){
+        printf("Error sendto: %s\n", gai_strerror(sizeSent));
+        return -1;
+    }
+    return 0;
 }
 
 bool operator== (const Socket &s1, const Socket &s2)
@@ -44,6 +74,10 @@ bool operator== (const Socket &s1, const Socket &s2)
     //Comparar los campos sin_family, sin_addr.s_addr y sin_port
     //de la estructura sockaddr_in de los Sockets s1 y s2
     //Retornar false si alguno difiere
+    struct sockaddr_in *sA1 = (struct sockaddr_in*) &s1.sa;
+    struct sockaddr_in *sA2 = (struct sockaddr_in*) &s2.sa;
+
+    return sA1->sin_family == sA2->sin_family && sA1->sin_addr.s_addr == sA2->sin_addr.s_addr && sA1->sin_port == sA2->sin_port;
 };
 
 std::ostream& operator<<(std::ostream& os, const Socket& s)
